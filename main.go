@@ -48,6 +48,10 @@ func main() {
 		tools.RegisterGitLabTool(mcpServer)
 	}
 
+	if isEnabled("github") {
+		tools.RegisterGitHubTool(mcpServer)
+	}
+
 	if isEnabled("script") {
 		tools.RegisterScriptTool(mcpServer)
 	}

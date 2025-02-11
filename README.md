@@ -31,6 +31,9 @@ ATLASSIAN_TOKEN=       # Your Atlassian API token
 GITLAB_HOST=           # Your GitLab instance URL
 GITLAB_TOKEN=          # Your GitLab personal access token
 
+# Required for GitHub services
+GITHUB_TOKEN=          # Your GitHub personal access token
+
 # Optional configurations
 ENABLE_TOOLS=          # Comma-separated list of tool groups to enable (empty = all enabled)
 PROXY_URL=            # Optional: HTTP/HTTPS proxy URL if needed
@@ -73,6 +76,36 @@ Create a new Confluence page
 #### confluence_update_page
 
 Update an existing Confluence page
+
+### Group: github
+
+#### github_list_repos
+
+List GitHub repositories for a user or organization
+
+#### github_get_repo
+
+Get GitHub repository details
+
+#### github_list_prs
+
+List pull requests
+
+#### github_get_pr_details
+
+Get pull request details
+
+#### github_create_pr_comment
+
+Create a comment on a pull request
+
+#### github_get_file_content
+
+Get file content from a GitHub repository
+
+#### github_create_pr
+
+Create a new pull request
 
 ### Group: gitlab
 
