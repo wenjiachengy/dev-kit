@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -19,16 +20,9 @@ type EnvVarInfo struct {
 type ToolInfo struct {
     Name        string
     Description string
-    Args        []ArgInfo
+    FileName    string
 }
 
-type ArgInfo struct {
-    Name        string
-    Type        string
-    Required    bool
-    Description string
-    Default     string
-}
 func updateReadmeConfig(envVars map[string]EnvVarInfo, tools []ToolInfo) error {
     // Read README.md
     content, err := ioutil.ReadFile("README.md")
@@ -58,27 +52,30 @@ func updateReadmeConfig(envVars map[string]EnvVarInfo, tools []ToolInfo) error {
     // Replace env config
     readmeContent = configRegex.ReplaceAllString(readmeContent, envConfig.String())
 
+    // Group tools by filename
+    toolsByFile := make(map[string][]ToolInfo)
+    for _, tool := range tools {
+        toolsByFile[tool.FileName] = append(toolsByFile[tool.FileName], tool)
+    }
+
     // Generate tools section content
     var toolsSection strings.Builder
     toolsSection.WriteString("## Available Tools\n\n")
-    for _, tool := range tools {
-        toolsSection.WriteString(fmt.Sprintf("### %s\n\n", tool.Name))
-        if tool.Description != "" {
-            toolsSection.WriteString(fmt.Sprintf("%s\n\n", tool.Description))
-        }
-        if len(tool.Args) > 0 {
-            toolsSection.WriteString("Arguments:\n\n")
-            for _, arg := range tool.Args {
-                toolsSection.WriteString(fmt.Sprintf("- `%s` (%s)", arg.Name, arg.Type))
-                if arg.Required {
-                    toolsSection.WriteString(" (Required)")
-                }
-                if arg.Default != "" {
-                    toolsSection.WriteString(fmt.Sprintf(" (Default: %s)", arg.Default))
-                }
-                toolsSection.WriteString(fmt.Sprintf(": %s\n", arg.Description))
+    
+    // Sort filenames for consistent output
+    var fileNames []string
+    for fileName := range toolsByFile {
+        fileNames = append(fileNames, fileName)
+    }
+    sort.Strings(fileNames)
+
+    for _, fileName := range fileNames {
+        toolsSection.WriteString(fmt.Sprintf("### Group: %s\n\n", strings.TrimSuffix(fileName, ".go")))
+        for _, tool := range toolsByFile[fileName] {
+            toolsSection.WriteString(fmt.Sprintf("#### %s\n\n", tool.Name))
+            if tool.Description != "" {
+                toolsSection.WriteString(fmt.Sprintf("%s\n\n", tool.Description))
             }
-            toolsSection.WriteString("\n")
         }
     }
 
@@ -103,7 +100,7 @@ func updateReadmeConfig(envVars map[string]EnvVarInfo, tools []ToolInfo) error {
     return nil
 }
 
-func extractToolInfo(node *ast.File) []ToolInfo {
+func extractToolInfo(node *ast.File, fileName string) []ToolInfo {
     var tools []ToolInfo
 
     ast.Inspect(node, func(n ast.Node) bool {
@@ -116,7 +113,9 @@ func extractToolInfo(node *ast.File) []ToolInfo {
         // Check if it's a NewTool call
         if sel, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
             if sel.Sel.Name == "NewTool" {
-                tool := ToolInfo{}
+                tool := ToolInfo{
+                    FileName: fileName,
+                }
                 
                 // Extract tool name
                 if len(callExpr.Args) > 0 {
@@ -135,38 +134,6 @@ func extractToolInfo(node *ast.File) []ToolInfo {
                                     if lit, ok := call.Args[0].(*ast.BasicLit); ok {
                                         tool.Description = strings.Trim(lit.Value, `"'`)
                                     }
-                                }
-                            case "WithString", "WithNumber", "WithBoolean":
-                                if len(call.Args) >= 2 {
-                                    arg := ArgInfo{
-                                        Type: strings.TrimPrefix(sel.Sel.Name, "With"),
-                                    }
-                                    if lit, ok := call.Args[0].(*ast.BasicLit); ok {
-                                        arg.Name = strings.Trim(lit.Value, `"'`)
-                                    }
-                                    for _, opt := range call.Args[1:] {
-                                        if call, ok := opt.(*ast.CallExpr); ok {
-                                            if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-                                                switch sel.Sel.Name {
-                                                case "Required":
-                                                    arg.Required = true
-                                                case "Description":
-                                                    if len(call.Args) > 0 {
-                                                        if lit, ok := call.Args[0].(*ast.BasicLit); ok {
-                                                            arg.Description = strings.Trim(lit.Value, `"'`)
-                                                        }
-                                                    }
-                                                case "DefaultString", "DefaultNumber":
-                                                    if len(call.Args) > 0 {
-                                                        if lit, ok := call.Args[0].(*ast.BasicLit); ok {
-                                                            arg.Default = strings.Trim(lit.Value, `"'`)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    tool.Args = append(tool.Args, arg)
                                 }
                             }
                         }
@@ -244,7 +211,8 @@ func main() {
 
         // Extract tool information if in tools directory
         if strings.HasPrefix(path, "tools/") {
-            tools := extractToolInfo(node)
+            fileName := filepath.Base(path)
+            tools := extractToolInfo(node, fileName)
             allTools = append(allTools, tools...)
         }
 
