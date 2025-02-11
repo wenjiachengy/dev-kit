@@ -86,6 +86,37 @@ func RegisterGitHubTool(s *server.MCPServer) {
 		mcp.WithString("action", mcp.Required(), mcp.Description("Action to take (approve/close)")),
 	)
 
+	issueListTool := mcp.NewTool("github_list_issues",
+		mcp.WithDescription("List GitHub issues for a repository"),
+		mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
+		mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
+		mcp.WithString("state", mcp.DefaultString("open"), mcp.Description("Issue state (open/closed/all)")),
+		mcp.WithBoolean("include_body", mcp.DefaultBool(false), mcp.Description("Include issue description in the output")),
+	)
+
+	issueDetailsTool := mcp.NewTool("github_get_issue",
+		mcp.WithDescription("Get GitHub issue details"),
+		mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
+		mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
+		mcp.WithString("number", mcp.Required(), mcp.Description("Issue number")),
+	)
+
+	issueCommentTool := mcp.NewTool("github_comment_issue",
+		mcp.WithDescription("Comment on a GitHub issue"),
+		mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
+		mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
+		mcp.WithString("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("comment", mcp.Required(), mcp.Description("Comment text")),
+	)
+
+	issueActionTool := mcp.NewTool("github_issue_action",
+		mcp.WithDescription("Close or reopen a GitHub issue"),
+		mcp.WithString("owner", mcp.Required(), mcp.Description("Repository owner")),
+		mcp.WithString("repo", mcp.Required(), mcp.Description("Repository name")),
+		mcp.WithString("number", mcp.Required(), mcp.Description("Issue number")),
+		mcp.WithString("action", mcp.Required(), mcp.Description("Action to take (close/reopen)")),
+	)
+
 	s.AddTool(listReposTool, util.ErrorGuard(listReposHandler))
 	s.AddTool(repoDetailsTool, util.ErrorGuard(getRepoHandler))
 	s.AddTool(prListTool, util.ErrorGuard(listPullRequestsHandler))
@@ -94,6 +125,10 @@ func RegisterGitHubTool(s *server.MCPServer) {
 	s.AddTool(fileContentTool, util.ErrorGuard(getGitHubFileContentHandler))
 	s.AddTool(createPRTool, util.ErrorGuard(createPullRequestHandler))
 	s.AddTool(prActionTool, util.ErrorGuard(prActionHandler))
+	s.AddTool(issueListTool, util.ErrorGuard(listIssuesHandler))
+	s.AddTool(issueDetailsTool, util.ErrorGuard(getIssueHandler))
+	s.AddTool(issueCommentTool, util.ErrorGuard(commentOnIssueHandler))
+	s.AddTool(issueActionTool, util.ErrorGuard(issueActionHandler))
 }
 
 func listReposHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
@@ -366,4 +401,156 @@ func prActionHandler(arguments map[string]interface{}) (*mcp.CallToolResult, err
 	default:
 		return nil, fmt.Errorf("invalid action: %s. Must be either 'approve' or 'close'", action)
 	}
+}
+
+func listIssuesHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	owner := arguments["owner"].(string)
+	repo := arguments["repo"].(string)
+	state := arguments["state"].(string)
+	includeBody := arguments["include_body"].(bool)
+
+	opt := &github.IssueListByRepoOptions{
+		State: state,
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
+	}
+
+	issues, _, err := githubClient().Issues.ListByRepo(context.Background(), owner, repo, opt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list issues: %v", err)
+	}
+
+	var result strings.Builder
+	for _, issue := range issues {
+		// Skip pull requests (they're also returned by the Issues API)
+		if issue.IsPullRequest() {
+			continue
+		}
+
+		result.WriteString(fmt.Sprintf("Issue #%d: %s\n", issue.GetNumber(), issue.GetTitle()))
+		result.WriteString(fmt.Sprintf("State: %s\n", issue.GetState()))
+		result.WriteString(fmt.Sprintf("Author: %s\n", issue.GetUser().GetLogin()))
+		result.WriteString(fmt.Sprintf("URL: %s\n", issue.GetHTMLURL()))
+		result.WriteString(fmt.Sprintf("Created: %s\n", issue.GetCreatedAt().Format("2006-01-02 15:04:05")))
+		if !issue.GetClosedAt().IsZero() {
+			result.WriteString(fmt.Sprintf("Closed: %s\n", issue.GetClosedAt().Format("2006-01-02 15:04:05")))
+		}
+		if len(issue.Labels) > 0 {
+			labels := make([]string, 0, len(issue.Labels))
+			for _, label := range issue.Labels {
+				labels = append(labels, label.GetName())
+			}
+			result.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labels, ", ")))
+		}
+
+		if includeBody && issue.GetBody() != "" {
+			result.WriteString(fmt.Sprintf("Description:\n%s\n", issue.GetBody()))
+		}
+		result.WriteString("\n")
+	}
+
+	return mcp.NewToolResultText(result.String()), nil
+}
+
+func getIssueHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	owner := arguments["owner"].(string)
+	repo := arguments["repo"].(string)
+	number := arguments["number"].(string)
+
+	issueNumber := 0
+	fmt.Sscanf(number, "%d", &issueNumber)
+
+	issue, _, err := githubClient().Issues.Get(context.Background(), owner, repo, issueNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issue: %v", err)
+	}
+
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Issue #%d: %s\n", issue.GetNumber(), issue.GetTitle()))
+	result.WriteString(fmt.Sprintf("State: %s\n", issue.GetState()))
+	result.WriteString(fmt.Sprintf("Author: %s\n", issue.GetUser().GetLogin()))
+	result.WriteString(fmt.Sprintf("URL: %s\n", issue.GetHTMLURL()))
+	result.WriteString(fmt.Sprintf("Created: %s\n", issue.GetCreatedAt().Format("2006-01-02 15:04:05")))
+	if !issue.GetClosedAt().IsZero() {
+		result.WriteString(fmt.Sprintf("Closed: %s\n", issue.GetClosedAt().Format("2006-01-02 15:04:05")))
+	}
+	if len(issue.Labels) > 0 {
+		labels := make([]string, 0, len(issue.Labels))
+		for _, label := range issue.Labels {
+			labels = append(labels, label.GetName())
+		}
+		result.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labels, ", ")))
+	}
+	result.WriteString(fmt.Sprintf("\nDescription:\n%s\n", issue.GetBody()))
+
+	// Get issue comments
+	comments, _, err := githubClient().Issues.ListComments(context.Background(), owner, repo, issueNumber, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issue comments: %v", err)
+	}
+
+	if len(comments) > 0 {
+		result.WriteString("\nComments:\n")
+		for _, comment := range comments {
+			result.WriteString(fmt.Sprintf("\nFrom @%s at %s:\n%s\n",
+				comment.GetUser().GetLogin(),
+				comment.GetCreatedAt().Format("2006-01-02 15:04:05"),
+				comment.GetBody()))
+		}
+	}
+
+	return mcp.NewToolResultText(result.String()), nil
+}
+
+func commentOnIssueHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	owner := arguments["owner"].(string)
+	repo := arguments["repo"].(string)
+	number := arguments["number"].(string)
+	comment := arguments["comment"].(string)
+
+	issueNumber := 0
+	fmt.Sscanf(number, "%d", &issueNumber)
+
+	issueComment := &github.IssueComment{
+		Body: github.String(comment),
+	}
+
+	_, _, err := githubClient().Issues.CreateComment(context.Background(), owner, repo, issueNumber, issueComment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create comment: %v", err)
+	}
+
+	return mcp.NewToolResultText("Comment created successfully"), nil
+}
+
+func issueActionHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+	owner := arguments["owner"].(string)
+	repo := arguments["repo"].(string)
+	number := arguments["number"].(string)
+	action := arguments["action"].(string)
+
+	issueNumber := 0
+	fmt.Sscanf(number, "%d", &issueNumber)
+
+	var state string
+	switch action {
+	case "close":
+		state = "closed"
+	case "reopen":
+		state = "open"
+	default:
+		return nil, fmt.Errorf("invalid action: %s. Must be either 'close' or 'reopen'", action)
+	}
+
+	issue := &github.IssueRequest{
+		State: &state,
+	}
+
+	_, _, err := githubClient().Issues.Edit(context.Background(), owner, repo, issueNumber, issue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to %s issue: %v", action, err)
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Issue %s successfully", action+"d")), nil
 }

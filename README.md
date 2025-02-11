@@ -107,6 +107,26 @@ Get file content from a GitHub repository
 
 Create a new pull request
 
+#### github_pr_action
+
+Approve or close a pull request
+
+#### github_list_issues
+
+List GitHub issues for a repository
+
+#### github_get_issue
+
+Get GitHub issue details
+
+#### github_comment_issue
+
+Comment on a GitHub issue
+
+#### github_issue_action
+
+Close or reopen a GitHub issue
+
 ### Group: gitlab
 
 #### gitlab_list_projects
