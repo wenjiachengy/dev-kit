@@ -1,11 +1,10 @@
 # Dev Kit - Model Context Protocol (MCP) Server
 
-[Tutorial](https://www.youtube.com/watch?v=XnDFtYKU6xU)
+Dev Kit is a powerful Model Context Protocol (MCP) server designed to enhance AI model capabilities by providing seamless integration with various development tools and services. It serves as a bridge between AI models (like Claude) and essential development services such as Jira, Confluence, and GitLab.
 
-## Community
+## Overview
 
-For community support, discussions, and updates, please visit our forum at [community.aiocean.io](https://community.aiocean.io/).
-
+This server implements the Model Context Protocol, allowing AI models to interact with development tools in a structured and secure way. It's particularly useful for automating development workflows, managing documentation, and handling version control operations through natural language interactions.
 
 ## Prerequisites
 
