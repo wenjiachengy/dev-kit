@@ -404,10 +404,28 @@ func prActionHandler(arguments map[string]interface{}) (*mcp.CallToolResult, err
 }
 
 func listIssuesHandler(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
-	owner := arguments["owner"].(string)
-	repo := arguments["repo"].(string)
-	state := arguments["state"].(string)
-	includeBody := arguments["include_body"].(bool)
+	owner, ok := arguments["owner"].(string)
+	if !ok || owner == "" {
+		return nil, fmt.Errorf("missing or invalid owner parameter")
+	}
+
+	repo, ok := arguments["repo"].(string)
+	if !ok || repo == "" {
+		return nil, fmt.Errorf("missing or invalid repo parameter")
+	}
+
+	state, ok := arguments["state"].(string)
+	if !ok || state == "" {
+		state = "open" // Default to open if not specified
+	}
+
+	// Safely handle include_body parameter with a default value
+	includeBody := false
+	if includeBodyVal, exists := arguments["include_body"]; exists {
+		if boolVal, ok := includeBodyVal.(bool); ok {
+			includeBody = boolVal
+		}
+	}
 
 	opt := &github.IssueListByRepoOptions{
 		State: state,
@@ -416,13 +434,27 @@ func listIssuesHandler(arguments map[string]interface{}) (*mcp.CallToolResult, e
 		},
 	}
 
-	issues, _, err := githubClient().Issues.ListByRepo(context.Background(), owner, repo, opt)
+	issues, resp, err := githubClient().Issues.ListByRepo(context.Background(), owner, repo, opt)
 	if err != nil {
+		if resp != nil && resp.StatusCode == 404 {
+			return mcp.NewToolResultText(fmt.Sprintf("No issues found for repository %s/%s", owner, repo)), nil
+		}
 		return nil, fmt.Errorf("failed to list issues: %v", err)
 	}
 
+	if len(issues) == 0 {
+		return mcp.NewToolResultText(fmt.Sprintf("No %s issues found for repository %s/%s", state, owner, repo)), nil
+	}
+
 	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Found %d issues for %s/%s:\n\n", len(issues), owner, repo))
+	
 	for _, issue := range issues {
+		// Skip nil issues
+		if issue == nil {
+			continue
+		}
+		
 		// Skip pull requests (they're also returned by the Issues API)
 		if issue.IsPullRequest() {
 			continue
@@ -430,22 +462,35 @@ func listIssuesHandler(arguments map[string]interface{}) (*mcp.CallToolResult, e
 
 		result.WriteString(fmt.Sprintf("Issue #%d: %s\n", issue.GetNumber(), issue.GetTitle()))
 		result.WriteString(fmt.Sprintf("State: %s\n", issue.GetState()))
-		result.WriteString(fmt.Sprintf("Author: %s\n", issue.GetUser().GetLogin()))
+		
+		if user := issue.GetUser(); user != nil {
+			result.WriteString(fmt.Sprintf("Author: %s\n", user.GetLogin()))
+		}
+		
 		result.WriteString(fmt.Sprintf("URL: %s\n", issue.GetHTMLURL()))
-		result.WriteString(fmt.Sprintf("Created: %s\n", issue.GetCreatedAt().Format("2006-01-02 15:04:05")))
+		
+		if !issue.GetCreatedAt().IsZero() {
+			result.WriteString(fmt.Sprintf("Created: %s\n", issue.GetCreatedAt().Format("2006-01-02 15:04:05")))
+		}
+		
 		if !issue.GetClosedAt().IsZero() {
 			result.WriteString(fmt.Sprintf("Closed: %s\n", issue.GetClosedAt().Format("2006-01-02 15:04:05")))
 		}
+		
 		if len(issue.Labels) > 0 {
 			labels := make([]string, 0, len(issue.Labels))
 			for _, label := range issue.Labels {
-				labels = append(labels, label.GetName())
+				if label != nil {
+					labels = append(labels, label.GetName())
+				}
 			}
-			result.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labels, ", ")))
+			if len(labels) > 0 {
+				result.WriteString(fmt.Sprintf("Labels: %s\n", strings.Join(labels, ", ")))
+			}
 		}
 
 		if includeBody && issue.GetBody() != "" {
-			result.WriteString(fmt.Sprintf("Description:\n%s\n", issue.GetBody()))
+			result.WriteString(fmt.Sprintf("\nDescription:\n%s\n", issue.GetBody()))
 		}
 		result.WriteString("\n")
 	}
