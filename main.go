@@ -58,7 +58,9 @@ func main() {
 
 	prompts.RegisterCodeTools(mcpServer)
 
-	resources.RegisterJiraResource(mcpServer)
+	if isEnabled("jira") {
+		resources.RegisterJiraResource(mcpServer)
+	}
 
 	if err := server.ServeStdio(mcpServer); err != nil {
 		panic(fmt.Sprintf("Server error: %v", err))
