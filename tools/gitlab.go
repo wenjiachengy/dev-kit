@@ -295,7 +295,7 @@ func getMergeRequestHandler(arguments map[string]interface{}) (*mcp.CallToolResu
 	}
 
 	// Get detailed changes
-	changes, _, err := gitlabClient().MergeRequests.ListMergeRequestDiffs(projectID, mrIID, nil)
+	changes, _, err := gitlabClient().MergeRequests.GetMergeRequestChanges(projectID, mrIID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get merge request changes: %v", err)
 	}
@@ -322,10 +322,10 @@ func getMergeRequestHandler(arguments map[string]interface{}) (*mcp.CallToolResu
 
 	// Write changes overview
 	result.WriteString(fmt.Sprintf("Changes Overview:\n"))
-	result.WriteString(fmt.Sprintf("Total files changed: %d\n\n", len(changes)))
+	result.WriteString(fmt.Sprintf("Total files changed: %d\n\n", len(changes.Changes)))
 
 	// Write detailed changes for each file
-	for _, change := range changes {
+	for _, change := range changes.Changes {
 		result.WriteString(fmt.Sprintf("File: %s\n", change.NewPath))
 		switch true {
 		case change.NewFile:
