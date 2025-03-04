@@ -9,8 +9,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/nguyenvanduocit/dev-kit/prompts"
-	"github.com/nguyenvanduocit/dev-kit/resources"
 	"github.com/nguyenvanduocit/dev-kit/tools"
 )
 
@@ -56,10 +54,8 @@ func main() {
 		tools.RegisterScriptTool(mcpServer)
 	}
 
-	prompts.RegisterCodeTools(mcpServer)
-
-	if isEnabled("jira") {
-		resources.RegisterJiraResource(mcpServer)
+	if isEnabled("codereview") {
+		tools.RegisterCodeReviewTool(mcpServer)
 	}
 
 	if err := server.ServeStdio(mcpServer); err != nil {
