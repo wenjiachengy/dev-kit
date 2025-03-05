@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/nguyenvanduocit/dev-kit/compare/v1.1.0...v1.2.0) (2025-03-05)
+
+
+### Features
+
+* Add Gitlab listMRCommentsTool ([ea2e8f0](https://github.com/nguyenvanduocit/dev-kit/commit/ea2e8f0cb34fdd436d2b26a1bf1bdf203f2e0858))
+* **main:** register code review tool and update dependencies ([84ad5f8](https://github.com/nguyenvanduocit/dev-kit/commit/84ad5f8d41db18bcf1443de4e53289f06c2121ce))
+* **tools:** add code review tool implementation ([7e94abb](https://github.com/nguyenvanduocit/dev-kit/commit/7e94abbe2c5d3973f8fd765e7213ab8b58033e08))
+
 ## [1.1.0](https://github.com/nguyenvanduocit/dev-kit/compare/v1.0.0...v1.1.0) (2025-02-11)
 
 
