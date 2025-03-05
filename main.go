@@ -57,11 +57,7 @@ func main() {
 	if isEnabled("codereview") {
 		tools.RegisterCodeReviewTool(mcpServer)
 	}
-
-	if isEnabled("commit") {
-		tools.RegisterCommitTool(mcpServer)
-	}
-
+	
 	if err := server.ServeStdio(mcpServer); err != nil {
 		panic(fmt.Sprintf("Server error: %v", err))
 	}
