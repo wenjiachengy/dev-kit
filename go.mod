@@ -3,18 +3,18 @@ module github.com/nguyenvanduocit/dev-kit
 go 1.23.2
 
 require (
-	github.com/JohannesKaufmann/html-to-markdown/v2 v2.2.1
+	github.com/JohannesKaufmann/html-to-markdown/v2 v2.3.1
 	github.com/ctreminiom/go-atlassian v1.6.1
 	github.com/google/go-github/v60 v60.0.0
 	github.com/joho/godotenv v1.5.1
-	github.com/mark3labs/mcp-go v0.6.0
+	github.com/mark3labs/mcp-go v0.16.0
 	github.com/pkg/errors v0.9.1
-	gitlab.com/gitlab-org/api/client-go v0.116.0
+	gitlab.com/gitlab-org/api/client-go v0.126.0
 )
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	github.com/JohannesKaufmann/dom v0.1.1-0.20240706125338-ff9f3b772364 // indirect
+	github.com/JohannesKaufmann/dom v0.2.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.5 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
@@ -40,10 +40,11 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/oauth2 v0.28.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/time v0.11.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

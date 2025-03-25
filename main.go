@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strings"
@@ -14,11 +15,15 @@ import (
 
 func main() {
 	envFile := flag.String("env", ".env", "Path to environment file")
+	protocol := flag.String("protocol", "stdio", "Protocol to use (stdio, sse)")
 	flag.Parse()
 
-	if err := godotenv.Load(*envFile); err != nil {
-		fmt.Printf("Warning: Error loading env file %s: %v\n", *envFile, err)
+	if *envFile != "" {
+		if err := godotenv.Load(*envFile); err != nil {
+			fmt.Printf("Warning: Error loading env file %s: %v\n", *envFile, err)
+		}
 	}
+
 	mcpServer := server.NewMCPServer(
 		"Dev Kit",
 		"1.0.0",
@@ -57,8 +62,21 @@ func main() {
 	if isEnabled("codereview") {
 		tools.RegisterCodeReviewTool(mcpServer)
 	}
-	
-	if err := server.ServeStdio(mcpServer); err != nil {
-		panic(fmt.Sprintf("Server error: %v", err))
+
+	if *protocol == "stdio" {
+
+		if err := server.ServeStdio(mcpServer); err != nil {
+			panic(fmt.Sprintf("Server error: %v", err))
+		}
+	} else if *protocol == "sse" {
+		port := os.Getenv("PORT")
+		if port == "" {	
+			port = "8080"
+		}
+
+		sseServer := server.NewSSEServer(mcpServer)
+		if err := sseServer.Start(fmt.Sprintf(":%s", port)); err != nil {
+			log.Fatalf("Server error: %v", err)
+		}
 	}
 }

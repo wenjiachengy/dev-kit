@@ -37,6 +37,7 @@ GITHUB_TOKEN=          # Your GitHub personal access token
 # Optional configurations
 ENABLE_TOOLS=          # Comma-separated list of tool groups to enable (empty = all enabled)
 PROXY_URL=            # Optional: HTTP/HTTPS proxy URL if needed
+PORT=                 # Port for SSE server (default: 8080)
 ```
 
 3. Config your claude's config:
@@ -46,11 +47,26 @@ PROXY_URL=            # Optional: HTTP/HTTPS proxy URL if needed
   "mcpServers": {
     "dev_kit": {
       "command": "dev-kit",
-      "args": ["-env", "/path/to/.env"],
+      "args": [
+        "-env", "/path/to/.env",
+        "-protocol", "stdio"  # or "sse" for Server-Sent Events protocol
+      ]
     }
   }
 }
 ```
+
+## Protocol Support
+
+Dev Kit supports two protocols for communication:
+
+1. **STDIO** (default): Standard input/output based communication
+2. **SSE** (Server-Sent Events): HTTP-based protocol that enables real-time data streaming
+
+To use SSE protocol:
+1. Set the `-protocol` flag to `sse` when starting the server
+2. Configure the `PORT` environment variable (default: 8080) if needed
+3. The server will be available at `http://localhost:PORT`
 
 ## Enable Tools
 
